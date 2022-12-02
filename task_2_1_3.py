@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
 from jinja2 import Environment, FileSystemLoader
 import pdfkit
-from openpyxl.reader.excel import load_workbook
+import doctest
 
 currency_to_rub = {
         "AZN": 35.68,
@@ -22,18 +22,41 @@ currency_to_rub = {
         "RUR": 1,
         "UAH": 1.64,
         "USD": 60.66,
-        "UZS": 0.0055,
     }
 
 
 class Salary:
+    """
+        Класс для представления зарплаты
+        :param salary_in_rur: оклад в рублях
+        :type salary_in_rur: float
+    """
     def __init__(self, dictionary):
+        """
+        Инициализирует объект класса Salary
+        :param dictionary: словарь с данными о окладе
+        :type dictionary: dict
+        """
         self.salary_in_rur = currency_to_rub[dictionary["salary_currency"]] * \
                         (math.floor(float(dictionary["salary_to"])) + math.floor(float(dictionary["salary_from"])))/2
 
 
 class Vacancy:
+    """
+    Класс для представления вакансий
+    :param dic: словарь с данными о вакансии
+    :type dic: dict
+    :param salary: оклад вакансий
+    :type salary: Salary
+    :param is_needed: соответствет ли вокансия введенной профессии
+    :type is_needed: bool
+    """
     def __init__(self, dictionary: dict):
+        """
+        Инициализирует объект класса Vacancy
+        :param dictionary: словарь с данными о вакансияъ
+        :type dictionary: dict
+        """
         self.dic = dictionary
         self.salary = Salary(dictionary)
         self.dic["year"] = int(dictionary["published_at"][:4])
@@ -41,7 +64,17 @@ class Vacancy:
 
 
 class InputConect:
+    """
+    Класс представляющий входные данные
+    :param file: имя файла
+    :type file: str
+    :param prof: название введеной профессии
+    :type prof: str
+    """
     def __init__(self):
+        """
+        Инициализирует объект класса InputConect
+        """
         self.file = input("Введите название файла: ")
         self.prof = input("Введите название профессии: ")
         with open(self.file, "r", encoding='utf-8-sig', newline='') as test:
@@ -54,7 +87,27 @@ class InputConect:
                 exit(0)
 
 class DataSet:
+    """
+    Класс представляющий собранные данные о ваканиях
+    :param input_values: входные данные
+    :type input_values: InputConect
+    :param years: годы
+    :type years: list
+    :param wages_year: словарь заработныч плат за все года
+    :type wages_year: dict
+    :param price_area: словарь зарплат по городам
+    :type price_area: dict
+    :param project_list: лист словарей для передачи в класс Report
+    :type project_list: list
+    :param count_year: словарь количества вакансий за все года
+    :type count_year: dict
+    :param count_area: словарь количества вакансий по городам
+    :type count_area:dict
+    """
     def __init__(self):
+        """
+        Инициализирует объект класса DataSet
+        """
         self.input_values = InputConect()
         self.csv_reader()
         self.csv_filter()
@@ -73,6 +126,10 @@ class DataSet:
         self.write_data()
 
     def csv_reader(self):
+        """
+        Читает csv файл
+        :return: заполнил массив данных о вакансиях
+        """
         with open(self.input_values.file, "r", encoding='utf-8-sig', newline='') as test:
             csv_file = csv.reader(test)
             self.first = next(csv_file)
@@ -85,6 +142,10 @@ class DataSet:
                     self.lines.append(row)
 
     def csv_filter(self):
+        """
+        Отбирает вакансии соответствующие введенной профессии
+        :return: отфильтрованные массив вакансий
+        """
         self.filt_vac = []
         for i in self.lines:
             new_dict = dict(zip(self.first, i))
@@ -93,11 +154,29 @@ class DataSet:
         self.required_vac = list(filter(lambda x: x.is_needed, self.filt_vac))
 
     def try_add(self, dic: dict, key, x):
+        """
+        Обновляет словарь данных статистики
+        :param dic: словарь
+        :type dic:dict
+        :param key: ключ
+        :type key: str
+        :param x: значение
+        :type x: float
+        :return: обновленные словарь
+        :rtype: dict
+        """
         try: dic[key] += x
         except: dic[key] = x
         return dic
 
     def upgrad_keys(self, count_key):
+        """
+        Воозвращает пустой словарь с входными ключами
+        :param count_key: входные ключи
+        :type count_key: dict
+        :return: Воозвращает пустой словарь с входными ключами
+        :rtype: dict
+        """
         for i in self.years:
             if i in count_key.keys():
                 continue
@@ -105,6 +184,17 @@ class DataSet:
         return count_key
 
     def get_key_and_count(self, list_vacs: list, str_key: str, is_area: bool):
+        """
+        Возвращает словари с данными о зарплатах и количествах вакансий
+        :param list_vacs: массив вакансий
+        :type list_vacs: list
+        :param str_key: ключ сбора статистики
+        :type str_key:str
+        :param is_area: статистика для городов или нет
+        :type is_area:bool
+        :return: словари с данными о вакансиях
+        :rtype: tuple
+        """
         sum_key, count_key = {}, {}
         for x in list_vacs:
             sum_key = self.try_add(sum_key, x.dic[str_key], x.salary.salary_in_rur)
@@ -120,6 +210,10 @@ class DataSet:
         key_to_middle_salary = salary_key
         return key_to_middle_salary, count_key
     def write_data(self):
+        """
+        Печатает обработанные данные
+        :return: напечатанные данные
+        """
         print("Динамика уровня зарплат по годам:", self.wages_year)
         print("Динамика количества вакансий по годам:", self.count_year)
         print("Динамика уровня зарплат по годам для выбранной профессии:", self.year_required_wages)
@@ -128,11 +222,28 @@ class DataSet:
         print("Доля вакансий по городам (в порядке убывания):", self.price_area)
 
     def creat_list(self):
+        """Создает лист словарей для передачи в класс Report
+
+        :return: лист словарей
+        :rtype: list
+        """
         return [self.wages_year, self.year_required_wages, self.count_year,
                 self.year_required_count, self.wages_area, self.price_area]
 
 class Report:
+    """
+    Класс представляющий отчет
+    :param dataSet_list: лист словарей с данными
+    :type dataSet_list: list
+    :param sheet_year: exl лист с таблицей статистики по годам
+    :type sheet_year: worksheet
+    :param sheet_city: exl лист с таблицами статистики по городам
+    :type sheet_city: worksheet
+    """
     def __init__(self):
+        """
+        Инициализирует объект класса Report
+        """
         self.dataSet_list = DataSet().project_list
         self.workbook = Workbook()
         self.workbook.remove(self.workbook.active)
@@ -140,11 +251,29 @@ class Report:
         self.sheet_city = self.workbook.create_sheet("Статистика по городам")
 
     def generate_excel(self):
+        """ Создает таблицу статистики в xlsx файл
+
+        :return: возвращиет xlsx файл
+        """
         def creator_column_name(array, sheet):
+            """Создает в определенный sheet имена column
+
+            :param array: массив столбцов таблицы
+            :type array: list
+            :param sheet: exl лист книги
+            :type array: worksheet
+            :return: обозвал ячейки шапки таблицы
+            """
             for index, column_name in enumerate(array):
                 sheet.cell(row=1, column=index + 1, value=column_name).font = Font(bold=True)
 
         def setting_column_width_and_border_style(sheet_year):
+            """В exl листе создает ширину ячеек и их дизайн
+
+            :param sheet_year: exl лист с таблицей статистики по годам
+            :type sheet_year: worksheet
+            :return: Создает таблицу статистики
+            """
             for column_cells in sheet_year.columns:
                 length = 0
                 for cell in column_cells:
@@ -172,7 +301,27 @@ class Report:
         self.workbook.save("report.xlsx")
 
     def generate_image(self):
+        """ Создает графики статистики в img
+
+        :return: img
+        """
         def creator_graph(number, value_1, value_2, name, bar_name_first, bar_name_second):
+            """Создает один из видов графиков
+
+            :param number: позиция в таблице
+            :type number: int
+            :param value_1: данные из vacancies
+            :type value_1: dict
+            :param value_2: данные из vacancies
+            :type value_2:dict
+            :param name: название графика
+            :type name:str
+            :param bar_name_first: название элемента графика
+            :type bar_name_first:str
+            :param bar_name_second: название элемента графика
+            :type bar_name_second:str
+            :return: png file
+            """
             ax = fig.add_subplot(number)
             ax.set_title(name)
             ax.bar(x - 0.4 / 2, value_1.values(), 0.4, label=bar_name_first)
@@ -211,6 +360,10 @@ class Report:
         plt.savefig("graph.png")
 
     def generate_pdf(self):
+        """Создает pdf, где соединяется таблица статистики и графики статистики в img
+
+        :return: pdf file
+        """
         self.generate_excel()
         self.generate_image()
         for row in range(2, self.sheet_city.max_row + 1):
