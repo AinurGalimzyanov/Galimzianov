@@ -36,7 +36,7 @@ class Vacancy:
 
 class InputConect:
     def __init__(self):
-        self.file = input("Введите  файла: ")
+        self.file = input("Введите название файла: ")
         self.prof = input("Введите название профессии: ")
         with open(self.file, "r", encoding='utf-8-sig', newline='') as test:
             unpacker = iter(csv.reader(test))
