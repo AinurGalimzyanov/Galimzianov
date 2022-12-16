@@ -1,7 +1,5 @@
 import csv
 import math
-from _datetime import datetime
-import re
 import matplotlib.pyplot as plt
 import numpy as np
 from openpyxl import Workbook
@@ -10,7 +8,19 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
 from jinja2 import Environment, FileSystemLoader
 import pdfkit
-import doctest
+import datetime as dt
+import dateparser
+import cProfile
+
+def profile(func):
+    """Decorator for run function profile"""
+    def wrapper(*args, **kwargs):
+        profile_filename = func.__name__ + '.prof'
+        profiler = cProfile.Profile()
+        result = profiler.runcall(func, *args, **kwargs)
+        profiler.dump_stats(profile_filename)
+        return result
+    return wrapper
 
 currency_to_rub = {
         "AZN": 35.68,
@@ -59,9 +69,56 @@ class Vacancy:
         """
         self.dic = dictionary
         self.salary = Salary(dictionary)
-        self.dic["year"] = int(dictionary["published_at"][:4])
+        self.dic["year"] = ParserDT(dictionary["published_at"]).get_year_four()
         self.is_needed = dictionary["is_needed"]
 
+
+class ParserDT:
+    """
+    Класс для парсинга строки даты и времени
+    :param datetime: полная строка даты и времени
+    :type datetime: str
+    """
+    def __init__(self, str_datetime: str):
+        """
+        Инициализирует объект класса DateTimeParser
+        :param str_datetime: полная строка даты и времени
+        :type str_datetime: str
+        """
+        self.datetime = str_datetime
+
+    def get_year_one(self):
+        """
+        Функция для получения года с помощью класса datetime
+        :return: Год
+        :rtype: int
+        """
+        format = '%Y-%m-%dT%H:%M:%S%z'
+        return dt.datetime.strptime(self.datetime, format).year
+
+    def get_year_two(self):
+        """
+        Функция для получения года с помощью метода split
+        :return: Год
+        :rtype: str
+        """
+        return self.datetime.split('-')[0]
+
+    def get_year_three(self):
+        """
+        Функция для получения года с помощью индексации строк
+        :return: Год
+        :rtype: str
+        """
+        return self.datetime[:4]
+
+    def get_year_four(self):
+        """
+        Функция для получения года с помощью класса dateparser
+        :return: Год
+        :rtype: int
+        """
+        return str(dateparser.parse(self.datetime).year)
 
 class InputConect:
     """
@@ -112,8 +169,10 @@ class DataSet:
         self.csv_reader()
         self.csv_filter()
         self.years = []
+
         for i in self.filt_vac:
             self.years.append(i.dic["year"])
+
         self.years.sort()
         conut_vacs = len(self.filt_vac)
         self.wages_year, self.count_year = self.get_key_and_count(self.filt_vac, "year", False)
@@ -124,6 +183,7 @@ class DataSet:
         self.price_area = dict(list(sorted(self.price_area.items(), key=lambda x: x[1], reverse=True))[:10])
         self.project_list = self.creat_list()
         self.write_data()
+
 
     def csv_reader(self):
         """
@@ -147,11 +207,15 @@ class DataSet:
         :return: отфильтрованные массив вакансий
         """
         self.filt_vac = []
+        pr = cProfile.Profile()
+        pr.enable()
         for i in self.lines:
             new_dict = dict(zip(self.first, i))
             new_dict["is_needed"] = new_dict["name"].find(self.input_values.prof) > -1
             self.filt_vac.append(Vacancy(new_dict))
         self.required_vac = list(filter(lambda x: x.is_needed, self.filt_vac))
+        pr.disable()
+        pr.print_stats()
 
     def try_add(self, dic: dict, key, x):
         """
@@ -221,6 +285,7 @@ class DataSet:
         print("Уровень зарплат по городам (в порядке убывания):", self.wages_area)
         print("Доля вакансий по городам (в порядке убывания):", self.price_area)
 
+    @profile
     def creat_list(self):
         """Создает лист словарей для передачи в класс Report
 
@@ -251,28 +316,34 @@ class Report:
         self.sheet_city = self.workbook.create_sheet("Статистика по городам")
 
     def generate_excel(self):
-        """ Создает таблицу статистики в xlsx файл
+        """
+        Создает таблицу статистики в xlsx файл
 
         :return: возвращиет xlsx файл
         """
         def creator_column_name(array, sheet):
-            """Создает в определенный sheet имена column
+            """
+            Создает в определенный sheet имена column
 
             :param array: массив столбцов таблицы
             :type array: list
+
             :param sheet: exl лист книги
             :type array: worksheet
+
             :return: обозвал ячейки шапки таблицы
             """
             for index, column_name in enumerate(array):
                 sheet.cell(row=1, column=index + 1, value=column_name).font = Font(bold=True)
 
-        def setting_column_width_and_border_style(sheet_year):
-            """В exl листе создает ширину ячеек и их дизайн
+        def setting_column_width_and_border_style(sheet_year) -> None:
+            """
+             В exl листе создает ширину ячеек и их дизайн
 
             :param sheet_year: exl лист с таблицей статистики по годам
             :type sheet_year: worksheet
-            :return: Создает таблицу статистики
+
+            :return:
             """
             for column_cells in sheet_year.columns:
                 length = 0
@@ -301,25 +372,35 @@ class Report:
         self.workbook.save("report.xlsx")
 
     def generate_image(self):
-        """ Создает графики статистики в img
+        """
+        Создает графики статистики в img
 
         :return: img
         """
+
+
         def creator_graph(number, value_1, value_2, name, bar_name_first, bar_name_second):
-            """Создает один из видов графиков
+            """
+            Создает один из видов графиков
 
             :param number: позиция в таблице
             :type number: int
+
             :param value_1: данные из vacancies
             :type value_1: dict
+
             :param value_2: данные из vacancies
             :type value_2:dict
+
             :param name: название графика
             :type name:str
+
             :param bar_name_first: название элемента графика
             :type bar_name_first:str
+
             :param bar_name_second: название элемента графика
             :type bar_name_second:str
+
             :return: png file
             """
             ax = fig.add_subplot(number)
@@ -360,7 +441,8 @@ class Report:
         plt.savefig("graph.png")
 
     def generate_pdf(self):
-        """Создает pdf, где соединяется таблица статистики и графики статистики в img
+        """
+        Создает pdf, где соединяется таблица статистики и графики статистики в img
 
         :return: pdf file
         """
@@ -378,4 +460,4 @@ class Report:
         config = pdfkit.configuration(wkhtmltopdf=r'E:\загрузки\wkhtmltopdf\bin\wkhtmltopdf.exe')
         pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={'enable-local-file-access': None})
 
-
+Report().generate_pdf()
