@@ -69,7 +69,7 @@ class Vacancy:
         """
         self.dic = dictionary
         self.salary = Salary(dictionary)
-        self.dic["year"] = ParserDT(dictionary["published_at"]).get_year_four()
+        self.dic["year"] = ParserDT(dictionary["published_at"]).get_year_one()
         self.is_needed = dictionary["is_needed"]
 
 
