@@ -459,5 +459,3 @@ class Report:
                                         'sheet_city': self.sheet_city})
         config = pdfkit.configuration(wkhtmltopdf=r'E:\загрузки\wkhtmltopdf\bin\wkhtmltopdf.exe')
         pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={'enable-local-file-access': None})
-
-Report().generate_pdf()
