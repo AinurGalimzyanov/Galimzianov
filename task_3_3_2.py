@@ -5,6 +5,9 @@ import pandas as pd
 def converter(value, currency):
     '''
     Конвретируетор волют
+    :param x: Исходная строка с средним окладом, названием валюты и датой публикации вакансии
+    :param df_currency: DataFrame с курсами валют по годам начиная с 2003 года
+    :return: Целое число, конвертированную по курсу
     '''
     if pd.isnull(value):
         return value
