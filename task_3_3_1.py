@@ -22,6 +22,9 @@ def create_chunks(file_name):
 file_name = "vacancies_dif_currencies.csv"
 create_chunks(file_name)
 
+'''
+Считывет и фильтрует файл. 
+'''
 df = pd.read_csv(file_name)
 print(df["salary_currency"].value_counts())
 df["count"] = df.groupby("salary_currency")["salary_currency"].transform("count")
@@ -30,10 +33,23 @@ df["published_at"] = df["published_at"].apply(lambda x: datetime(int(x[:4]), int
 headers = df["salary_currency"].unique()
 min_date = df["published_at"].min()
 max_date = df["published_at"].max()
+'''
+список валют
+'''
 headers = np.delete(headers, 1)
+'''
+словарь для сбора данных из запроса
+'''
 data_dict = {item: [] for item in np.insert(headers, 0, "date")}
+'''
+список с датами
+'''
 dates_lst = pd.date_range(min_date.strftime("%Y-%m"), max_date.strftime("%Y-%m"), freq="MS")
 
+
+'''
+Создает файл о валютах за определенный период
+'''
 sites = []
 for date in dates_lst:
     t = pd.to_datetime(str(date))
