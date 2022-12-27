@@ -7,7 +7,6 @@ from pandas import json_normalize
 задаем основные настройки и переменные
 '''
 pd.set_option("display.max_columns", None)
-data = {'name': [], 'salary_from': [], 'salary_to': [], 'salary_currency': [], 'area_name': [], 'published_at': []}
 date = ['2022-12-16T00:00:00', '2022-12-16T06:00:00',
         '2022-12-16T12:00:00', '2022-12-16T18:00:00', '2022-12-17T00:00:00']
 
