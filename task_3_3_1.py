@@ -68,4 +68,4 @@ for res in grequests.map(response):
             data_dict[key].append(None)
 
 df = pd.DataFrame(data_dict)
-df.to_csv("currencies.csv", index=False)
+df.to_csv("dataframe.csv", index=False)
