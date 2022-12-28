@@ -1,4 +1,3 @@
-import cProfile
 import math
 import multiprocessing
 import os
@@ -8,21 +7,17 @@ import pandas as pd
 
 class DataSet():
     def __init__(self):
-        self.folder_name = 'csv'
         file = 'vacancies.csv'
         self.vacancy = 'Аналитик'
         self.df = pd.read_csv(file)
 
         self.df['salary'] = self.df[['salary_from', 'salary_to']].mean(axis=1)
         self.df['published_at'] = self.df['published_at'].apply(lambda x: int(x[:4]))
-        df_vacancy = self.df[self.df['name'].str.contains(self.vacancy)]
         self.years = self.df['published_at'].unique()
         self.salaryByYears = {year: [] for year in self.years}
         self.vacsByYears = {year: 0 for year in self.years}
         self.vacSalaryByYears = {year: [] for year in self.years}
         self.vacCountByYears = {year: 0 for year in self.years}
-        # self.salaryArea = {year : [] for year in self.years}
-        # self.citiesArea = {year: 0 for year in self.years}
         self.GetStaticByCities()
         self.initializeYearStatistics()
 
@@ -78,8 +73,7 @@ class DataSet():
             averageSalaryProfession = 0 if df_vacancy.empty else math.floor(df_vacancy["salary"].mean())
             numberOfVacanciesProfession = 0 if df_vacancy.empty else len(df_vacancy.index)
 
-            returnDict[year] = [averageSalary, numberOfVacancies, averageSalaryProfession,
-                                 numberOfVacanciesProfession]
+            returnDict[year] = [averageSalary, numberOfVacancies, averageSalaryProfession, numberOfVacanciesProfession]
 
     def PrintInfo(self):
         '''
@@ -103,18 +97,15 @@ class DataSet():
         df_norm = self.df[self.df['count'] > 0.01 * total]
         df_area = df_norm.groupby('area_name', as_index=False)['salary'].mean().sort_values(by='salary', ascending=False)
 
-        # print(df_area)
         df_count = df_norm.groupby('area_name', as_index=False)['count'].mean().sort_values(by='count', ascending=False)
-        # print(df_count)
         cities = df_count['area_name'].unique()
         self.salaryArea = {city: 0 for city in cities}
         self.countArea = {city: 0 for city in cities}
         for city in cities:
-            # a = df_count[df_count['area_name'] == city]['count']
-            # b = a[1]
             self.salaryArea[city] = int(df_area[df_area['area_name'] == city]['salary'])
             self.salaryArea = dict(sorted(self.salaryArea.items(), key=lambda x: x[1], reverse=True))
             self.countArea[city] = round(int(df_count[df_count['area_name'] == city]['count']) / total, 4)
+
 
 if __name__ == '__main__':
     DataSet()
