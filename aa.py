@@ -68,7 +68,7 @@ class MultiprocessorHandler:
         self.fill_data(result_data)
 
     def fill_data(self, data: dict):
-        for year, value in data.items():
+        for year, value in data:
             self.result_data.salary_by_years[year] = value[0]
             self.result_data.count_by_years[year] = value[1]
             self.result_data.profession_salary[year] = value[2]
