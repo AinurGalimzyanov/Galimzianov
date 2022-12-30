@@ -1,5 +1,6 @@
 import csv
 import math
+from _datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 from openpyxl import Workbook
@@ -459,3 +460,8 @@ class Report:
                                         'sheet_city': self.sheet_city})
         config = pdfkit.configuration(wkhtmltopdf=r'E:\загрузки\wkhtmltopdf\bin\wkhtmltopdf.exe')
         pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={'enable-local-file-access': None})
+
+
+start_time = datetime.now()
+Report().generate_excel()
+print(f"Total time: {datetime.now() - start_time}")

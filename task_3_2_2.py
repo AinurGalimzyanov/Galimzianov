@@ -1,111 +1,301 @@
-import math
-import multiprocessing
-import os
-
+from multiprocessing import Pool
+from _datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+from openpyxl import Workbook
+from openpyxl.styles import Font, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
+from jinja2 import Environment, FileSystemLoader
+import pdfkit
+from openpyxl.reader.excel import load_workbook
 import pandas as pd
+import os
+import multiprocessing
+from itertools import repeat
 
 
-class DataSet():
+class DataSet:
+    """
+    Класс для хранения списка вакансий.
+    Attributes:
+        file_name (str): Название файла
+        vacancies_objects (list): Список вакансий
+    """
+
     def __init__(self):
-        file = 'vacancies.csv'
-        self.vacancy = 'Аналитик'
-        self.df = pd.read_csv(file)
-
-        self.df['salary'] = self.df[['salary_from', 'salary_to']].mean(axis=1)
-        self.df['published_at'] = self.df['published_at'].apply(lambda x: int(x[:4]))
-        self.years = self.df['published_at'].unique()
-        self.salaryByYears = {year: [] for year in self.years}
-        self.vacsByYears = {year: 0 for year in self.years}
-        self.vacSalaryByYears = {year: [] for year in self.years}
-        self.vacCountByYears = {year: 0 for year in self.years}
-        self.GetStaticByCities()
-        self.initializeYearStatistics()
-
-    def initializeYearStatistics(self):
-        """Добавляет в словари статистик значения из файла
-            Также запускает multiprocessing
         """
-        processes = []
-        manager = multiprocessing.Manager()
-        returnDict = manager.dict()
-        for year in self.years:
-            process = multiprocessing.Process(target=self.getStatisticByYear, args=(year, returnDict))
-            processes.append(process)
-            process.start()
-
-        for process in processes:
-            process.join()
-
-        for year, value in returnDict.items():
-            self.salaryByYears[year] = value[0]
-            self.vacsByYears[year] = value[1]
-            self.vacSalaryByYears[year] = value[2]
-            self.vacCountByYears[year] = value[3]
-
-        self.salaryByYears = dict(sorted(self.salaryByYears.items()))
-
-        self.vacsByYears = dict(sorted(self.vacsByYears.items()))
-
-        self.vacSalaryByYears = dict(
-            sorted(self.vacSalaryByYears.items()))
-
-        self.vacCountByYears = dict(
-            sorted(self.vacCountByYears.items()))
-
-        self.PrintInfo()
-
-
-    def getStatisticByYear(self, year, returnDict):
-        """Возвращает статистку за год в порядке:
-            Среднее значение зарплаты за год,
-            Количество вакансий за год.
-            Среднее значение зарплаты за год для выбранной профессии.
-            Количество вакансий за год для выбранной профессии
+        Конструктор для инициализация объекта DataSet, который создает поле для хранения списка вакансий
+        Args:
+             file_name (str): Название файла
         """
-        file_path = rf"data/vacancies_{year}.csv"
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
-            df["salary"] = df[["salary_from", "salary_to"]].mean(axis=1)
-            df_vacancy = df[df["name"].str.contains(self.vacancy)]
+        self.salary_by_year = dict()
+        self.vacancies_count_by_year = dict()
+        self.salary_by_profession_name = dict()
+        self.vacancies_count_by_profession_name = dict()
+        self.salary_by_city = dict()
+        self.vacancy_rate_by_city = dict()
+        self.dict_lict = list()
 
-            averageSalary = math.floor(df["salary"].mean())
-            numberOfVacancies = len(df.index)
-            averageSalaryProfession = 0 if df_vacancy.empty else math.floor(df_vacancy["salary"].mean())
-            numberOfVacanciesProfession = 0 if df_vacancy.empty else len(df_vacancy.index)
+    def return_list(self):
+        return [self.salary_by_year, self.vacancies_count_by_year, self.salary_by_profession_name,
+                self.vacancies_count_by_profession_name, self.salary_by_city, self.vacancy_rate_by_city]
 
-            returnDict[year] = [averageSalary, numberOfVacancies, averageSalaryProfession, numberOfVacanciesProfession]
 
-    def PrintInfo(self):
-        '''
-        Вывод данных
-        :return: void
-        '''
-        print('Динамика уровня зарплат по годам:', self.salaryByYears)
-        print('Динамика количества вакансий по годам:', self.vacsByYears)
-        print('Динамика уровня зарплат по годам для выбранной профессии:', self.vacSalaryByYears)
-        print('Динамика количества вакансий по годам для выбранной профессии:', self.vacCountByYears)
-        print('Уровень зарплат по городам (в порядке убывания):', self.salaryArea)
-        print('Доля вакансий по городам (в порядке убывания):', self.countArea)
+class InputConnect:
+    """Класс для ввода данных и формирования отчетности о вакансиях
+    Args:
+        params (tuple): Кортеж с названием файла и профессии
+    """
 
-    def GetStaticByCities(self):
-        '''
-        Получение данных по городам, не требующих multiprocessing
-        :return: void
-        '''
-        total = len(self.df)
-        self.df['count'] = self.df.groupby('area_name')['area_name'].transform('count')
-        df_norm = self.df[self.df['count'] > 0.01 * total]
-        df_area = df_norm.groupby('area_name', as_index=False)['salary'].mean().sort_values(by='salary', ascending=False)
+    def __init__(self):
+        """Конструктор для инициализации объекта InputConnect"""
+        self.file_name, self.path_name, self.profession_name = InputConnect.get_params()
 
-        df_count = df_norm.groupby('area_name', as_index=False)['count'].mean().sort_values(by='count', ascending=False)
-        cities = df_count['area_name'].unique()
-        self.salaryArea = {city: 0 for city in cities}
-        self.countArea = {city: 0 for city in cities}
-        for city in cities:
-            self.salaryArea[city] = int(df_area[df_area['area_name'] == city]['salary'])
-            self.salaryArea = dict(sorted(self.salaryArea.items(), key=lambda x: x[1], reverse=True))
-            self.countArea[city] = round(int(df_count[df_count['area_name'] == city]['count']) / total, 4)
+    @staticmethod
+    def get_params():
+        """Статический метод для ввода данные о вакансии
+        :return: Кортеж с названием файла и профессии
+        """
+        file_name = input("Введите название файла: ")
+        path_name = "data"
+        profession_name = input("Введите название профессии: ")
+        return file_name, path_name, profession_name
+
+    @staticmethod
+    def print_data_dict(self, data: DataSet):
+        """Вычисляет и печатает в консоль словари со статистикой по городам
+        :param self: Объект класса InputConnect
+        :param data: Объект класса DataSet
+        """
+        df = pd.read_csv(self.file_name)
+        count = len(df)
+        df["salary"] = df[["salary_from", "salary_to"]].mean(axis=1)
+        df["count"] = df.groupby("area_name")["area_name"].transform("count")
+        df_norm = df[df["count"] > 0.01 * count]
+        df_area = df_norm.groupby("area_name", as_index=False)["salary"].mean().sort_values(by="salary", ascending=False)
+        df_area["salary"] = df_area["salary"].apply(lambda x: int(x))
+        df_area10 = df_area.head(10)
+        data.salary_by_city = dict(zip(df_area10["area_name"], df_area10["salary"]))
+
+        data.vacancy_rate_by_city = {k: round(v / count, 4) for k, v in dict(df["area_name"].value_counts()).items()}
+
+        print(f"Динамика уровня зарплат по годам: {data.salary_by_year}")
+        print(f"Динамика количества вакансий по годам: {data.vacancies_count_by_year}")
+        print(f"Динамика уровня зарплат по годам для выбранной профессии: {data.salary_by_profession_name}")
+        print(
+            f"Динамика количества вакансий по годам для выбранной профессии: {data.vacancies_count_by_profession_name}")
+        print(f"Уровень зарплат по городам (в порядке убывания): {data.salary_by_city}")
+        print(f"Доля вакансий по городам (в порядке убывания): {dict(list(data.vacancy_rate_by_city.items())[:10])}")
+
+    def read_csv_by_path(self, path: str):
+        """Метод для многопоточной обработки csv файлов при помощи модуля pandas
+        :param path: Путь до csv файла с вакансиями
+        :param data: Объект класса DataSet
+        """
+        df = pd.read_csv(path)
+        df["salary"] = df[["salary_from", "salary_to"]].mean(axis=1)
+        df["published_at"] = df["published_at"].apply(lambda d: datetime(int(d[:4]), int(d[5:7]), int(d[8:10])).year)
+        year = df["published_at"][0]
+        df_vacancy = df["name"].str.contains(self.profession_name)
+
+        filter_by_year = df["published_at"] == year
+        salary_by_year = (year, int(df[filter_by_year]["salary"].mean()))
+        vacancies_count_by_year = (year, len(df[filter_by_year]))
+        salary_by_profession_name = (year, int(df[df_vacancy & filter_by_year]["salary"].mean()))
+        vacancies_count_by_profession_name = (year, len(df[df_vacancy & filter_by_year]))
+        return salary_by_year, vacancies_count_by_year, salary_by_profession_name, vacancies_count_by_profession_name
+
+    def processesed(self, data: DataSet):
+        """
+        Метод, для создания потоков при помощи модуля multiprocessing и вывода на консоль статистики по годам
+        :param data: Объект класса DataSet
+        :return: None
+        """
+        process_args = [f"{self.path_name}/{file}" for file in os.listdir(self.path_name)]
+
+        pool = Pool(processes=multiprocessing.cpu_count())
+        # pool = Pool()
+        # stat_list = list(pool.starmap(InputConnect.read_csv_by_path, zip(repeat(self), process_args)))
+        for item in pool.map(self.read_csv_by_path, process_args):
+            data.salary_by_year[item[0][0]] = item[0][1]
+            data.vacancies_count_by_year[item[1][0]] = item[1][1]
+            data.salary_by_profession_name[item[2][0]] = item[2][1]
+            data.vacancies_count_by_profession_name[item[3][0]] = item[3][1]
+        pool.terminate()
+
+        InputConnect.print_data_dict(self, data)
+
+class Report:
+    """
+    Класс представляющий отчет
+    :param dataSet_list: лист словарей с данными
+    :type dataSet_list: list
+    :param sheet_year: exl лист с таблицей статистики по годам
+    :type sheet_year: worksheet
+    :param sheet_city: exl лист с таблицами статистики по городам
+    :type sheet_city: worksheet
+    """
+    def __init__(self):
+        """
+        Инициализирует объект класса Report
+        """
+        self.dataSet_list = DataSet().return_list()
+        self.workbook = Workbook()
+        self.workbook.remove(self.workbook.active)
+        self.sheet_year = self.workbook.create_sheet("Статистика по годам")
+        self.sheet_city = self.workbook.create_sheet("Статистика по городам")
+
+    def generate_excel(self):
+        """
+        Создает таблицу статистики в xlsx файл
+
+        :return: возвращиет xlsx файл
+        """
+        def creator_column_name(array, sheet):
+            """
+            Создает в определенный sheet имена column
+
+            :param array: массив столбцов таблицы
+            :type array: list
+
+            :param sheet: exl лист книги
+            :type array: worksheet
+
+            :return: обозвал ячейки шапки таблицы
+            """
+            for index, column_name in enumerate(array):
+                sheet.cell(row=1, column=index + 1, value=column_name).font = Font(bold=True)
+
+        def setting_column_width_and_border_style(sheet_year) -> None:
+            """
+             В exl листе создает ширину ячеек и их дизайн
+
+            :param sheet_year: exl лист с таблицей статистики по годам
+            :type sheet_year: worksheet
+
+            :return:
+            """
+            for column_cells in sheet_year.columns:
+                length = 0
+                for cell in column_cells:
+                    bd = Side(style="thin", color="000000")
+                    cell.border = Border(left=bd, top=bd, right=bd, bottom=bd)
+                    if cell.value is not None:
+                        length = max(len(str(cell.value)), length)
+                sheet_year.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
+
+        creator_column_name(["Год", "Средняя зарплата", "Средняя зарплата - Программист",
+                                             "Количество вакансий", "Количество вакансий - Программист"], self.sheet_year)
+        for year in self.dataSet_list[0].keys():
+            self.sheet_year.append([year, self.dataSet_list[0][year], self.dataSet_list[1][year],
+                               self.dataSet_list[2][year], self.dataSet_list[3][year]])
+        setting_column_width_and_border_style(self.sheet_year)
+
+        creator_column_name(["Город", "Уровень зарплат", " ", "Город", "Доля вакансий"], self.sheet_city)
+        for index, key in enumerate(self.dataSet_list[4].keys()):
+            self.sheet_city.append([key, self.dataSet_list[4][key], None, list(self.dataSet_list[5].keys())[index],
+                               self.dataSet_list[5][list(self.dataSet_list[5].keys())[index]]])
+        setting_column_width_and_border_style(self.sheet_city)
+
+        for cell in self.sheet_city['E']:
+            cell.number_format = FORMAT_PERCENTAGE_00
+        self.workbook.save("report.xlsx")
+
+    def generate_image(self):
+        """
+        Создает графики статистики в img
+
+        :return: img
+        """
+
+
+        def creator_graph(number, value_1, value_2, name, bar_name_first, bar_name_second):
+            """
+            Создает один из видов графиков
+
+            :param number: позиция в таблице
+            :type number: int
+
+            :param value_1: данные из vacancies
+            :type value_1: dict
+
+            :param value_2: данные из vacancies
+            :type value_2:dict
+
+            :param name: название графика
+            :type name:str
+
+            :param bar_name_first: название элемента графика
+            :type bar_name_first:str
+
+            :param bar_name_second: название элемента графика
+            :type bar_name_second:str
+
+            :return: png file
+            """
+            ax = fig.add_subplot(number)
+            ax.set_title(name)
+            ax.bar(x - 0.4 / 2, value_1.values(), 0.4, label=bar_name_first)
+            ax.bar(x + 0.4 / 2, value_2.values(), 0.4, label=bar_name_second)
+            ax.set_xticks(x, value_1.keys(), rotation="vertical")
+            ax.legend(loc='best')
+            ax.grid(True, axis='y')
+            ax.legend(fontsize=8)
+
+        fig = plt.figure()
+        x = np.arange(len(self.dataSet_list[0].keys()))
+        creator_graph(221, self.dataSet_list[0], self.dataSet_list[1],
+                      "Уровень зарплат по годам", "средняя з/п", "з/п программист")
+        creator_graph(222, self.dataSet_list[2], self.dataSet_list[3],
+                      "Количество вакансии по годам", "Количество вакансии", "Количество вакансии\nпрограммист")
+
+        ax = fig.add_subplot(223)
+        ax.set_title("Уровень зарплат по городам")
+        y_pos = np.arange(len(self.dataSet_list[4].keys()))
+        ax.barh(y_pos, list(self.dataSet_list[4].values()), align='center')
+        ax.set_yticks(y_pos, labels=self.dataSet_list[4].keys())
+        ax.invert_yaxis()
+        ax.grid(True, axis='x')
+
+        ax = fig.add_subplot(224)
+        ax.set_title("Доля вакансии по годам")
+        keys = list(self.dataSet_list[5].keys())
+        keys.append("Другие")
+        values = list(self.dataSet_list[5].values())
+        sum_values = sum(list(self.dataSet_list[5].values()))
+        values.append(1 - sum_values)
+        ax.pie(values, labels=keys, startangle=-5)
+
+        fig.set_size_inches(9, 7)
+        plt.tight_layout()
+        plt.savefig("graph.png")
+
+    def generate_pdf(self):
+        """
+        Создает pdf, где соединяется таблица статистики и графики статистики в img
+
+        :return: pdf file
+        """
+        self.generate_excel()
+        self.generate_image()
+        for row in range(2, self.sheet_city.max_row + 1):
+            for col in range(4, 6):
+                if type(self.sheet_city.cell(row, col).value).__name__ == "float":
+                    self.sheet_city.cell(row, col).value = str(round(self.sheet_city.cell(row, col).value * 100, 2)) + '%'
+
+        pdf_template = Environment(loader=FileSystemLoader('.'))\
+            .get_template("pdf_template.html").render({'name': 'Программист', 'png': "graph.png",
+                                        'sheet_year':  self.sheet_year,
+                                        'sheet_city': self.sheet_city})
+        config = pdfkit.configuration(wkhtmltopdf=r'E:\загрузки\wkhtmltopdf\bin\wkhtmltopdf.exe')
+        pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={'enable-local-file-access': None})
 
 
 if __name__ == '__main__':
-    DataSet()
+    inputparam = InputConnect()
+    start_time = datetime.now()
+    dataset = DataSet()
+    inputparam.processesed(dataset)
+    Report().generate_pdf()
+    print(f"Total time: {datetime.now() - start_time}")
