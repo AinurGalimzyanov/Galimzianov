@@ -11,7 +11,6 @@ def create_table():
         cursor = sqlite_connection.cursor()
 
         df = pd.read_csv("dataframe.csv")
-        # Запись в созданную таблицу текущий dataframe
         df.to_sql('exchange_rates', sqlite_connection, if_exists='replace', index=False)
 
         cursor.close()

@@ -1,4 +1,5 @@
 Без многопроцессорной обработки:
+
 ![](img/without_multiprocessing.png)
 
 Multiprocessing:
