@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hi</title>
+</head>
+<body>
+    <h1 style="font-family: Verdana, sans-serif; text-align: center; font-size: 36px">
+        Аналитика по зарплатам и городам для профессии {{name}}
+    </h1>
+
+    <img style="text-align: center" src="file:///D:/Ablyametov/{{image_file}}">
+
+    <h2 style="font-family: Verdana, sans-serif; text-align: center; font-size: 36px">
+        Статистика по годам
+    </h2>
+
+    <table style="font-family: Verdana, Geneva, Tahoma, sans-serif; width: 100%; border-collapse: collapse;">
+        <thead>
+         <tr>
+             {% for column_cells in sheet_1.columns: %}
+             <th style="border: 1px solid black; font-size: 18px; padding: 5px; text-align: center">
+                 {{ column_cells[0].value}}
+             </th>
+             {% endfor %}
+         </tr>
+        </thead>
+        <tbody>
+          {% for row in range(2, sheet_1.max_row + 1): %}
+          <tr>
+            {% for col in range(1, sheet_1.max_column + 1): %}
+            <td style="padding: 5px; border: 1px solid black; font-size: 14px; font-weight: normal; text-align: center">
+                {{ sheet_1.cell(row, col).value }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
