@@ -38,7 +38,7 @@ max_date = df["published_at"].max()
 '''
 headers = np.delete(headers, 1)
 '''
-словарь для сбора данных из запроса
+Словарь для сбора данных из запроса
 '''
 data_dict = {item: [] for item in np.insert(headers, 0, "date")}
 '''

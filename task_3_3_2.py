@@ -1,7 +1,6 @@
 import math
 import pandas as pd
 
-
 def converter(value, currency):
     '''
     Конвретируетор волют

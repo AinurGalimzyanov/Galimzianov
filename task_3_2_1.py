@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 
 '''
-разделение csv-файла на чанки по годам публикации вакансии
+Разделение csv-файла на чанки по годам публикации вакансии
 '''
 file_name = 'vacancies.csv'
 data_csv = pd.read_csv(file_name)

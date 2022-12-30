@@ -22,6 +22,7 @@ def converter(value, currency):
             return round(float(values[0]) * course[0])
     return value
 
+
 '''
 Задаем основные настройки и считываем файлы
 '''
