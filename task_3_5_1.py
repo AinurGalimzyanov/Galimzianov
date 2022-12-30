@@ -7,11 +7,11 @@ def create_table():
     :return: None
     """
     try:
-        sqlite_connection = sqlite3.connect('task_3_5_1.db')
+        sqlite_connection = sqlite3.connect('Database_3_5_1.db')
         cursor = sqlite_connection.cursor()
 
         df = pd.read_csv("dataframe.csv")
-        df.to_sql('exchange_rates', sqlite_connection, if_exists='replace', index=False)
+        df.to_sql('task_3_5_1', sqlite_connection, if_exists='replace', index=False)
 
         cursor.close()
 
