@@ -3,15 +3,15 @@ import pandas as pd
 
 def create_table():
     """
-    Скрипт для создания БД и записи из файла dataframe.csv со всеми курсами валют с 2003-2022 год
+    Создаем БД из файла dataframe.csv
     :return: None
     """
     try:
-        sqlite_connection = sqlite3.connect('Database_3_5_1.db')
-        cursor = sqlite_connection.cursor()
+        conect = sqlite3.connect('Database_3_5_1.db')
+        cursor = conect.cursor()
 
         df = pd.read_csv("dataframe.csv")
-        df.to_sql('task_3_5_1', sqlite_connection, if_exists='replace', index=False)
+        df.to_sql('task_3_5_1', conect, if_exists='replace', index=False)
 
         cursor.close()
 
@@ -19,8 +19,8 @@ def create_table():
         print("Ошибка при подключении к sqlite", error)
 
     finally:
-        if (sqlite_connection):
-            sqlite_connection.close()
+        if (conect):
+            conect.close()
             print("Соединение с SQLite закрыто")
 
 
