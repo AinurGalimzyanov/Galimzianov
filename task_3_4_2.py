@@ -259,10 +259,10 @@ class Report:
                     self.sheet_city.cell(row, col).value = str(round(self.sheet_city.cell(row, col).value * 100, 2)) + '%'
 
         pdf_template = Environment(loader=FileSystemLoader('.'))\
-            .get_template("pdf_template_3_4_2.html").render({'name': 'Программист', 'png': "graph.png",
-                                        'sheet_year':  self.sheet_year})
+            .get_template("pdf_template_3_4_2.html").render({'name': 'Программист', 'image_file': "graph.png",
+                                        'sheet_1':  self.sheet_year})
         config = pdfkit.configuration(wkhtmltopdf=r'E:\загрузки\wkhtmltopdf\bin\wkhtmltopdf.exe')
-        pdfkit.from_string(pdf_template, 'report_3_4_2.pdf', configuration=config, options={'enable-local-file-access': None})
+        pdfkit.from_string(pdf_template, 'report_3_4_22.pdf', configuration=config, options={'enable-local-file-access': None})
 
 
 if __name__ == '__main__':
